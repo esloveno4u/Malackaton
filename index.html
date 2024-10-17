@@ -3,110 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Embalses de Andalucía</title>
+    <title>Embalses Cercanos</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
-        table {
+        #map {
+            height: 600px;
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
         }
-        th, td {
+
+        /* Estilos para alto contraste */
+        body.high-contrast {
+            background-color: #000;
+            color: #fff;
+        }
+        
+        body.high-contrast button, body.high-contrast a {
+            background-color: yellow;
+            color: black;
+        }
+
+        /* Estilos para aumentar el tamaño del texto */
+        body.large-text {
+            font-size: 1.5em;
+        }
+
+        /* Estilos del botón de accesibilidad */
+        .accessibility-button {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+            font-size: 14px;
+        }
+
+        .accessibility-menu {
+            display: none;
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            padding: 15px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .accessibility-menu button {
+            display: block;
+            margin-bottom: 10px;
             padding: 10px;
-            text-align: left;
-            border: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        input[type="text"] {
-            margin-bottom: 20px;
-            padding: 10px;
-            width: 300px;
+            width: 100%;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
+    <h1>Embalses Cercanos a Tu Ubicación</h1>
 
-    <h1>Embalses de Andalucía</h1>
+    <!-- Mapa -->
+    <div id="map"></div>
 
-    <!-- Campo de búsqueda -->
-    <input type="text" id="buscarEmbalse" placeholder="Buscar embalse por nombre o ámbito...">
+    <!-- Botón de accesibilidad -->
+    <button class="accessibility-button" onclick="toggleAccessibilityMenu()">Accesibilidad</button>
+    <div class="accessibility-menu" id="accessibilityMenu">
+        <button onclick="toggleHighContrast()">Alto Contraste</button>
+        <button onclick="toggleLargeText()">Texto Grande</button>
+        <button onclick="readContent()">Narrar Texto</button>
+    </div>
 
-    <table id="embalsesTable">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Ámbito</th>
-                <th>Nombre del embalse</th>
-                <th>Agua total (hm³)</th>
-                <th>Eléctrico</th>
-                <th>Link</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Aquí se insertarán los datos del JSON -->
-        </tbody>
-    </table>
-
+    <!-- Scripts para Leaflet y la geolocalización -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        let embalses = [];
+        // Muestra u oculta el menú de accesibilidad
+        function toggleAccessibilityMenu() {
+            const menu = document.getElementById('accessibilityMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
 
-        // Función para cargar los datos del archivo JSON
-        async function cargarDatos() {
-            try {
-                const response = await fetch('embalsesutf8.json');
-                if (!response.ok) {
-                    throw new Error('No se pudo cargar el archivo JSON');
-                }
+        // Alternar el modo de alto contraste
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+        }
 
-                // Convertimos la respuesta a JSON
-                const datos = await response.json();
-                embalses = datos.items; // Guardamos los embalses en una variable global
-                mostrarDatos(embalses); // Mostramos los datos inicialmente
-            } catch (error) {
-                console.error('Error al cargar los datos:', error);
+        // Alternar el texto grande
+        function toggleLargeText() {
+            document.body.classList.toggle('large-text');
+        }
+
+        // Leer el contenido de la página (narrador de texto)
+        function readContent() {
+            const content = document.querySelector('h1').innerText + " " + 
+                            document.querySelector('p').innerText;
+            const utterance = new SpeechSynthesisUtterance(content);
+            speechSynthesis.speak(utterance);
+        }
+
+        // Geolocalización y mapa
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showMap, showError);
+        } else {
+            alert('La geolocalización no es soportada por este navegador.');
+        }
+
+        function showMap(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+
+            // Crear el mapa centrado en la ubicación del usuario
+            var map = L.map('map').setView([lat, lon], 10);
+
+            // Añadir una capa de OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Marcar la ubicación del usuario
+            var userMarker = L.marker([lat, lon]).addTo(map)
+                .bindPopup('<b>Estás aquí</b>').openPopup();
+
+            // Llamar al backend para obtener los embalses cercanos
+            fetch(`http://localhost:3000/embalses-cercanos?lat=${lat}&lon=${lon}`)
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(embalse => {
+                        // Marcar cada embalse en el mapa
+                        var embalseMarker = L.marker([embalse.LATITUD, embalse.LONGITUD]).addTo(map)
+                            .bindPopup(`<b>${embalse.NOMBRE}</b><br>A ${embalse.DISTANCE.toFixed(2)} km.`);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error al obtener los embalses:', error);
+                });
+        }
+
+        function showError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("El usuario negó el acceso a la geolocalización.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("La ubicación no está disponible.");
+                    break;
+                case error.TIMEOUT:
+                    alert("La solicitud de geolocalización ha caducado.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Ha ocurrido un error desconocido.");
+                    break;
             }
         }
-
-        // Función para mostrar los datos en la tabla
-        function mostrarDatos(datos) {
-            const tbody = document.querySelector('#embalsesTable tbody');
-            tbody.innerHTML = ''; // Limpiamos el contenido de la tabla
-
-            datos.forEach(embalse => {
-                const fila = document.createElement('tr');
-                fila.innerHTML = `
-                    <td>${embalse.id}</td>
-                    <td>${embalse.ambito_nombre}</td>
-                    <td>${embalse.embalse_nombre}</td>
-                    <td>${embalse.agua_total}</td>
-                    <td>${embalse.electrico_flag ? 'Sí' : 'No'}</td>
-                    <td><a href="${embalse.links[0].href}" target="_blank">Ver más</a></td>
-                `;
-                tbody.appendChild(fila);
-            });
-        }
-
-        // Función para filtrar los embalses según el valor del campo de búsqueda
-        function filtrarEmbalses() {
-            const filtro = document.querySelector('#buscarEmbalse').value.toLowerCase();
-
-            // Filtramos los embalses según el nombre o el ámbito
-            const embalsesFiltrados = embalses.filter(embalse => {
-                return embalse.embalse_nombre.toLowerCase().includes(filtro) ||
-                       embalse.ambito_nombre.toLowerCase().includes(filtro);
-            });
-
-            // Volvemos a mostrar los embalses filtrados
-            mostrarDatos(embalsesFiltrados);
-        }
-
-        // Escuchar eventos de entrada en el campo de búsqueda
-        document.querySelector('#buscarEmbalse').addEventListener('input', filtrarEmbalses);
-
-        // Cargamos los datos cuando la página se cargue
-        window.onload = cargarDatos;
     </script>
-
 </body>
 </html>

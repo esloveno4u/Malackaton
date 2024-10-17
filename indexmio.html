@@ -12,7 +12,7 @@
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
-            transition: background-color 0.3s, color 0.3s; /* Transición suave para modo alto contraste */
+            transition: background-color 0.3s, color 0.3s;
         }
 
         /* Cabecero superior */
@@ -23,35 +23,35 @@
             text-align: center;
             font-size: 2.5em;
             font-weight: bold;
-            position: fixed; /* Mantiene el cabecero fijo */
-            top: 0; /* Posiciona en la parte superior */
+            position: fixed;
+            top: 0;
             left: 0;
-            width: 100%; /* Ocupa todo el ancho */
-            z-index: 2; /* Asegura que esté encima del mapa */
+            width: 100%;
+            z-index: 2;
         }
 
         #map {
-            width: calc(100% - 40px); /* Reduce el ancho del mapa */
+            width: calc(100% - 60px); /* Reduce el ancho del mapa */
             height: 600px;
             margin: 80px auto; /* Margen superior para evitar que se superponga con el cabecero */
-            position: relative; /* Permite que los elementos se superpongan */
-            z-index: 1; /* Asegura que el mapa esté detrás de otros elementos */
+            position: relative;
+            z-index: 1;
+            padding-bottom: 60px; /* Espacio inferior para la separación */
         }
 
-
-
-        /* Buscador debajo del mapa */
+        /* Buscador y filtro debajo del mapa */
         .search-container {
             text-align: center;
             margin: 20px;
             position: relative;
-            z-index: 2; /* Asegura que el buscador esté delante del mapa */
+            z-index: 2;
         }
 
-        .search-container input[type="text"] {
+        .search-container input[type="text"],
+        .search-container select {
             padding: 10px;
             font-size: 1.2em;
-            width: 50%;
+            width: 40%;
             margin-right: 10px;
         }
 
@@ -68,14 +68,15 @@
         footer {
             background: linear-gradient(90deg, #007BFF, #28a745);
             color: white;
-            padding: 15px;
+            padding: 12px;
             text-align: left;
             font-size: 1.2em;
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            z-index:2;
+            z-index: 2;
+            padding-bottom: 20px; /* Espacio inferior */
         }
 
         /* Barra lateral de accesibilidad */
@@ -90,7 +91,7 @@
             transition: 0.5s;
             padding-top: 60px;
             color: white;
-            z-index: 2; /* Asegura que la barra lateral esté encima del mapa */
+            z-index: 2;
         }
 
         .sidebar a {
@@ -125,29 +126,30 @@
 
         /* Modo alto contraste */
         body.high-contrast {
-            background-color: #000; /* Fondo oscuro */
-            color: #fff; /* Texto claro */
+            background-color: #000;
+            color: #fff;
         }
 
         body.high-contrast header,
         body.high-contrast footer {
-            background: #333; /* Fondo más oscuro para cabecera y pie */
-            color: #ffeb3b; /* Texto amarillo */
+            background: #333;
+            color: #ffeb3b;
         }
 
         body.high-contrast .search-container input[type="text"],
+        body.high-contrast .search-container select,
         body.high-contrast .search-container button {
-            background-color: #444; /* Fondo de entrada oscuro */
-            color: #fff; /* Texto claro */
-            border: 1px solid #fff; /* Borde blanco */
+            background-color: #444;
+            color: #fff;
+            border: 1px solid #fff;
         }
 
         body.high-contrast .search-container button {
-            background-color: #007BFF; /* Botón azul */
+            background-color: #007BFF;
         }
 
         body.high-contrast .sidebar {
-            background-color: #222; /* Fondo más oscuro para la barra lateral */
+            background-color: #222;
         }
 
         body.large-text {
@@ -165,9 +167,14 @@
     <!-- Mapa -->
     <div id="map"></div>
 
-    <!-- Buscador debajo del mapa -->
+    <!-- Buscador y filtro debajo del mapa -->
     <div class="search-container">
         <input type="text" id="buscarEmbalse" placeholder="Buscar embalse...">
+        <select id="filtroEmbalse">
+            <option value="id">ID</option>
+            <option value="nombre">Nombre</option>
+            <option value="agua">Cantidad de agua</option>
+        </select>
         <button onclick="filtrarEmbalses()">Buscar</button>
     </div>
 
@@ -183,6 +190,7 @@
                 <li><a href="#" onclick="toggleHighContrast()">Alto Contraste</a></li>
                 <li><a href="#" onclick="toggleLargeText()">Texto Grande</a></li>
                 <li><a href="#" onclick="readContent()">Narrar Texto</a></li>
+                <li><a href="#" onclick="toggleHelpText()">Texto de Ayuda</a></li> <!-- Nueva opción -->
             </ul>
         </div>
     </div>
@@ -208,11 +216,12 @@
             <!-- Aquí se insertarán los datos del JSON -->
         </tbody>
     </table>
-    
+
     <!-- Scripts para Leaflet y la geolocalización -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
         let embalses = [];
+        let helpTextEnabled = false; // Variable para controlar el texto de ayuda
 
         // Cargar datos de embalses
         async function cargarDatos() {
@@ -232,7 +241,7 @@
         // Mostrar datos en la tabla
         function mostrarDatos(datos) {
             const tbody = document.querySelector('#embalsesTable tbody');
-            tbody.innerHTML = ''; // Limpiar contenido de la tabla
+            tbody.innerHTML = '';
 
             datos.forEach(embalse => {
                 const fila = document.createElement('tr');
@@ -251,11 +260,19 @@
         // Filtrar embalses según valor del campo de búsqueda
         function filtrarEmbalses() {
             const filtro = document.querySelector('#buscarEmbalse').value.toLowerCase();
+            const criterio = document.querySelector('#filtroEmbalse').value;
 
             const embalsesFiltrados = embalses.filter(embalse => {
-                return embalse.id.toString().includes(filtro) || 
-                       embalse.embalse_nombre.toLowerCase().includes(filtro) || 
-                       embalse.ambito_nombre.toLowerCase().includes(filtro);
+                switch (criterio) {
+                    case 'id':
+                        return embalse.id.toString().includes(filtro);
+                    case 'nombre':
+                        return embalse.embalse_nombre.toLowerCase().includes(filtro);
+                    case 'agua':
+                        return embalse.agua_total.toString().includes(filtro);
+                    default:
+                        return false;
+                }
             });
 
             mostrarDatos(embalsesFiltrados);
@@ -286,6 +303,17 @@
                             document.querySelector('footer').innerText;
             const utterance = new SpeechSynthesisUtterance(content);
             speechSynthesis.speak(utterance);
+        }
+
+        // Alternar texto de ayuda
+        function toggleHelpText() {
+            helpTextEnabled = !helpTextEnabled;
+            const content = helpTextEnabled ? 
+                "Aquí puedes buscar embalses por ID, nombre o cantidad de agua. Utiliza el menú de accesibilidad para activar funciones adicionales." : "";
+            const utterance = new SpeechSynthesisUtterance(content);
+            if (helpTextEnabled) {
+                speechSynthesis.speak(utterance);
+            }
         }
 
         // Limitar el mapa a la región de España

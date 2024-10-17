@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>En busca de tu embalse</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <link rel="stylesheet" href="general.css">
+    <style>
+        /* Estilos generales */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            transition: background-color 0.3s, color 0.3s; /* Transición suave para modo alto contraste */
+        }
+
+        /* Cabecero superior */
+        header {
+            background: linear-gradient(90deg, #007BFF, #28a745);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 2.5em;
+            font-weight: bold;
+            position: fixed; /* Mantiene el cabecero fijo */
+            top: 0; /* Posiciona en la parte superior */
+            left: 0;
+            width: 100%; /* Ocupa todo el ancho */
+            z-index: 2; /* Asegura que esté encima del mapa */
+        }
+
+        #map {
+            width: calc(100% - 40px); /* Reduce el ancho del mapa */
+            height: 600px;
+            margin: 80px auto; /* Margen superior para evitar que se superponga con el cabecero */
+            position: relative; /* Permite que los elementos se superpongan */
+            z-index: 1; /* Asegura que el mapa esté detrás de otros elementos */
+        }
+
+
+
+        /* Buscador debajo del mapa */
+        .search-container {
+            text-align: center;
+            margin: 20px;
+            position: relative;
+            z-index: 2; /* Asegura que el buscador esté delante del mapa */
+        }
+
+        .search-container input[type="text"] {
+            padding: 10px;
+            font-size: 1.2em;
+            width: 50%;
+            margin-right: 10px;
+        }
+
+        .search-container button {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Estilos del pie de página */
+        footer {
+            background: linear-gradient(90deg, #007BFF, #28a745);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-size: 1.2em;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index:2;
+        }
+
+        /* Barra lateral de accesibilidad */
+        .sidebar {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #111;
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+            color: white;
+            z-index: 2; /* Asegura que la barra lateral esté encima del mapa */
+        }
+
+        .sidebar a {
+            padding: 10px 15px;
+            text-decoration: none;
+            font-size: 1.2em;
+            color: #818181;
+            display: block;
+            transition: 0.3s;
+        }
+
+        .sidebar a:hover {
+            color: #f1f1f1;
+        }
+
+        .sidebar .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 2em;
+        }
+
+        .hamburger {
+            font-size: 2em;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            cursor: pointer;
+            z-index: 1000;
+            color: white;
+        }
+
+        /* Modo alto contraste */
+        body.high-contrast {
+            background-color: #000; /* Fondo oscuro */
+            color: #fff; /* Texto claro */
+        }
+
+        body.high-contrast header,
+        body.high-contrast footer {
+            background: #333; /* Fondo más oscuro para cabecera y pie */
+            color: #ffeb3b; /* Texto amarillo */
+        }
+
+        body.high-contrast .search-container input[type="text"],
+        body.high-contrast .search-container button {
+            background-color: #444; /* Fondo de entrada oscuro */
+            color: #fff; /* Texto claro */
+            border: 1px solid #fff; /* Borde blanco */
+        }
+
+        body.high-contrast .search-container button {
+            background-color: #007BFF; /* Botón azul */
+        }
+
+        body.high-contrast .sidebar {
+            background-color: #222; /* Fondo más oscuro para la barra lateral */
+        }
+
+        body.large-text {
+            font-size: 1.5em;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Cabecera superior -->
+    <header>
+        EN BUSCA DE TU EMBALSE
+    </header>
+
+    <!-- Mapa -->
+    <div id="map"></div>
+
+    <!-- Buscador debajo del mapa -->
+    <div class="search-container">
+        <input type="text" id="buscarEmbalse" placeholder="Buscar embalse...">
+        <button onclick="filtrarEmbalses()">Buscar</button>
+    </div>
+
+    <!-- Botón de menú de accesibilidad -->
+    <div class="hamburger" onclick="openNav()">&#9776;</div>
+
+    <!-- Barra lateral de accesibilidad -->
+    <div id="mySidenav" class="sidebar">
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+        <div>
+            <a href="#">Accesibilidad &#9662;</a>
+            <ul class="dropdown">
+                <li><a href="#" onclick="toggleHighContrast()">Alto Contraste</a></li>
+                <li><a href="#" onclick="toggleLargeText()">Texto Grande</a></li>
+                <li><a href="#" onclick="readContent()">Narrar Texto</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Pie de página -->
+    <footer>
+        Equipo Avanza Pirulo-Malackaton'24
+    </footer>
+
+    <!-- Tabla de embalses -->
+    <table id="embalsesTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Ámbito</th>
+                <th>Nombre del embalse</th>
+                <th>Agua total (hm³)</th>
+                <th>Eléctrico</th>
+                <th>Link</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Aquí se insertarán los datos del JSON -->
+        </tbody>
+    </table>
+    
+    <!-- Scripts para Leaflet y la geolocalización -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        let embalses = [];
+
+        // Cargar datos de embalses
+        async function cargarDatos() {
+            try {
+                const response = await fetch('embalsesutf8.json');
+                if (!response.ok) {
+                    throw new Error('No se pudo cargar el archivo JSON');
+                }
+                const datos = await response.json();
+                embalses = datos.items;
+                mostrarDatos(embalses);
+            } catch (error) {
+                console.error('Error al cargar los datos:', error);
+            }
+        }
+
+        // Mostrar datos en la tabla
+        function mostrarDatos(datos) {
+            const tbody = document.querySelector('#embalsesTable tbody');
+            tbody.innerHTML = ''; // Limpiar contenido de la tabla
+
+            datos.forEach(embalse => {
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td>${embalse.id}</td>
+                    <td>${embalse.ambito_nombre}</td>
+                    <td>${embalse.embalse_nombre}</td>
+                    <td>${embalse.agua_total}</td>
+                    <td>${embalse.electrico_flag ? 'Sí' : 'No'}</td>
+                    <td><a href="${embalse.links[0].href}" target="_blank">Ver más</a></td>
+                `;
+                tbody.appendChild(fila);
+            });
+        }
+
+        // Filtrar embalses según valor del campo de búsqueda
+        function filtrarEmbalses() {
+            const filtro = document.querySelector('#buscarEmbalse').value.toLowerCase();
+
+            const embalsesFiltrados = embalses.filter(embalse => {
+                return embalse.id.toString().includes(filtro) || 
+                       embalse.embalse_nombre.toLowerCase().includes(filtro) || 
+                       embalse.ambito_nombre.toLowerCase().includes(filtro);
+            });
+
+            mostrarDatos(embalsesFiltrados);
+        }
+
+        // Muestra u oculta el menú de accesibilidad
+        function openNav() {
+            document.getElementById("mySidenav").style.width = "250px";
+        }
+
+        function closeNav() {
+            document.getElementById("mySidenav").style.width = "0";
+        }
+
+        // Alternar el modo de alto contraste
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+        }
+
+        // Alternar el texto grande
+        function toggleLargeText() {
+            document.body.classList.toggle('large-text');
+        }
+
+        // Leer el contenido de la página (narrador de texto)
+        function readContent() {
+            const content = document.querySelector('header').innerText + " " + 
+                            document.querySelector('footer').innerText;
+            const utterance = new SpeechSynthesisUtterance(content);
+            speechSynthesis.speak(utterance);
+        }
+
+        // Limitar el mapa a la región de España
+        var southWest = L.latLng(35.896, -10.154);
+        var northEast = L.latLng(43.792, 4.762);
+        var bounds = L.latLngBounds(southWest, northEast);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showMap, showError);
+        } else {
+            alert('La geolocalización no es soportada por este navegador.');
+        }
+
+        function showMap(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+
+            var map = L.map('map', {
+                maxBounds: bounds,
+                maxZoom: 12,
+                minZoom: 5
+            }).setView([lat, lon], 8);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            var userMarker = L.marker([lat, lon]).addTo(map)
+                .bindPopup('<b>Estás aquí</b>').openPopup();
+
+            var circle = L.circle([lat, lon], {
+                color: 'blue',
+                fillColor: 'red',
+                fillOpacity: 0.2,
+                radius: 100000
+            }).addTo(map);
+        }
+
+        function showError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("El usuario negó el acceso a la geolocalización.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("La ubicación no está disponible.");
+                    break;
+                case error.TIMEOUT:
+                    alert("La solicitud de geolocalización ha caducado.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Ha ocurrido un error desconocido.");
+                    break;
+            }
+        }
+
+        // Cargamos los datos cuando la página se cargue
+        window.onload = cargarDatos;
+    </script>
+</body>
+</html>

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>En busca de tu embalse</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <link rel="stylesheet" href="general.css">
     <style>
         /* Estilos generales */
         body, html {
@@ -15,7 +16,7 @@
 
         /* Cabecero superior */
         header {
-            background: linear-gradient(90deg, #007BFF, #28a745); /* Azul a verde */
+            background: linear-gradient(90deg, #007BFF, #28a745);
             color: white;
             padding: 20px;
             text-align: center;
@@ -45,19 +46,25 @@
             cursor: pointer;
         }
 
-        /* Estilos del mapa */
+       /* Estilos del mapa */
         #map {
-            height: 600px;
-            width: 100%;
+            width: 75%; /* Ajusta el ancho a un 80% */
+            height: 600px; /* Mantener la altura */
+            margin: 20px auto; /* Centrar el mapa con margen superior e inferior */
         }
+
 
         /* Estilos del pie de página */
         footer {
-            background: linear-gradient(90deg, #007BFF, #28a745); /* Azul a verde */
+            background: linear-gradient(90deg, #007BFF, #28a745);
             color: white;
             padding: 15px;
-            text-align: center;
-            font-size: 1.2em;
+            text-align: left;
+            font-size: 1.5em; /* Aumentar el tamaño del pie de página */
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
         }
 
         /* Barra lateral de accesibilidad */
@@ -103,18 +110,15 @@
             z-index: 1000;
         }
 
-        /* Botón de inicio de sesión */
-        .login-button {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #007BFF;
-            color: white;
-            padding: 10px 20px;
-            font-size: 1.2em;
-            border: none;
-            cursor: pointer;
-            z-index: 1000;
+        /* Carpeta para accesibilidad */
+        .folder .dropdown {
+            display: none;
+            list-style-type: none;
+            padding-left: 15px;
+        }
+
+        .folder:hover .dropdown {
+            display: block;
         }
 
         /* Modo alto contraste */
@@ -122,6 +126,11 @@
         body.high-contrast footer {
             background: #000;
             color: #ffeb3b;
+        }
+
+        /* Estilos de texto grande */
+        body.large-text {
+            font-size: 2.5em; /* Aumentar el tamaño de la fuente globalmente */
         }
     </style>
 </head>
@@ -134,7 +143,7 @@
 
     <!-- Buscador debajo del título -->
     <div class="search-container">
-        <input type="text" placeholder="Buscar embalse...">
+        <input type="text" id="buscarEmbalse" placeholder="Buscar embalse...">
         <button>Buscar</button>
     </div>
 
@@ -144,13 +153,15 @@
     <!-- Barra lateral de accesibilidad -->
     <div id="mySidenav" class="sidebar">
         <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-        <a href="#" onclick="toggleHighContrast()">Alto Contraste</a>
-        <a href="#" onclick="toggleLargeText()">Texto Grande</a>
-        <a href="#" onclick="readContent()">Narrar Texto</a>
+        <div class="folder">
+            <a href="#">Accesibilidad &#9662;</a> <!-- Carpeta para accesibilidad -->
+            <ul class="dropdown">
+                <li><a href="#" onclick="toggleHighContrast()">Alto Contraste</a></li>
+                <li><a href="#" onclick="toggleLargeText()">Texto Grande</a></li>
+                <li><a href="#" onclick="readContent()">Narrar Texto</a></li>
+            </ul>
+        </div>
     </div>
-
-    <!-- Botón de inicio de sesión / registro -->
-    <button class="login-button" onclick="login()">Iniciar sesión / Registrarse</button>
 
     <!-- Mapa -->
     <div id="map"></div>
@@ -160,9 +171,78 @@
         Equipo Avanza Pirulo-Malackaton'24
     </footer>
 
+    <!-- Tabla de embalses -->
+    <table id="embalsesTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Ámbito</th>
+                <th>Nombre del embalse</th>
+                <th>Agua total (hm³)</th>
+                <th>Eléctrico</th>
+                <th>Link</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Aquí se insertarán los datos del JSON -->
+        </tbody>
+    </table>
+    
     <!-- Scripts para Leaflet y la geolocalización -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
+        let embalses = [];
+
+        // Cargar datos de embalses
+        async function cargarDatos() {
+            try {
+                const response = await fetch('embalsesutf8.json');
+                if (!response.ok) {
+                    throw new Error('No se pudo cargar el archivo JSON');
+                }
+                const datos = await response.json();
+                embalses = datos.items;
+                mostrarDatos(embalses);
+            } catch (error) {
+                console.error('Error al cargar los datos:', error);
+            }
+        }
+
+        // Mostrar datos en la tabla
+        function mostrarDatos(datos) {
+            const tbody = document.querySelector('#embalsesTable tbody');
+            tbody.innerHTML = ''; // Limpiar contenido de la tabla
+
+            datos.forEach(embalse => {
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td>${embalse.id}</td>
+                    <td>${embalse.ambito_nombre}</td>
+                    <td>${embalse.embalse_nombre}</td>
+                    <td>${embalse.agua_total}</td>
+                    <td>${embalse.electrico_flag ? 'Sí' : 'No'}</td>
+                    <td><a href="${embalse.links[0].href}" target="_blank">Ver más</a></td>
+                `;
+                tbody.appendChild(fila);
+            });
+        }
+
+        // Filtrar embalses según valor del campo de búsqueda
+        function filtrarEmbalses() {
+            const filtro = document.querySelector('#buscarEmbalse').value.toLowerCase();
+
+            const embalsesFiltrados = embalses.filter(embalse => {
+                return embalse.id.toString().includes(filtro) || 
+                       embalse.embalse_nombre.toLowerCase().includes(filtro) || 
+                       embalse.ambito_nombre.toLowerCase().includes(filtro);
+            });
+
+            mostrarDatos(embalsesFiltrados);
+        }
+
+        // Escuchar eventos de entrada en el campo de búsqueda
+        document.querySelector('#buscarEmbalse').addEventListener('input', filtrarEmbalses);
+
         // Muestra u oculta el menú de accesibilidad
         function openNav() {
             document.getElementById("mySidenav").style.width = "250px";
@@ -190,15 +270,9 @@
             speechSynthesis.speak(utterance);
         }
 
-        // Función para el botón de inicio de sesión / registro
-        function login() {
-            alert("Iniciar sesión o registrarse");
-            // Aquí puedes redirigir al usuario a una página de login/registro
-        }
-
         // Limitar el mapa a la región de España
-        var southWest = L.latLng(35.896, -10.154); // Punto más suroeste
-        var northEast = L.latLng(43.792, 4.762);  // Punto más noreste
+        var southWest = L.latLng(35.896, -10.154);
+        var northEast = L.latLng(43.792, 4.762);
         var bounds = L.latLngBounds(southWest, northEast);
 
         if (navigator.geolocation) {
@@ -211,43 +285,27 @@
             var lat = position.coords.latitude;
             var lon = position.coords.longitude;
 
-            // Crear el mapa centrado en la ubicación del usuario
             var map = L.map('map', {
-                maxBounds: bounds, // Limitar el mapa a España
+                maxBounds: bounds,
                 maxZoom: 12,
                 minZoom: 5
             }).setView([lat, lon], 8);
 
-            // Añadir una capa de OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
-            // Marcar la ubicación del usuario
             var userMarker = L.marker([lat, lon]).addTo(map)
                 .bindPopup('<b>Estás aquí</b>').openPopup();
 
-            // Dibujar un círculo azul con interior rojo y un radio de 100 km (100000 metros)
             var circle = L.circle([lat, lon], {
-                color: 'blue',        // Color del borde del círculo
-                fillColor: 'red',     // Color del relleno
-                fillOpacity: 0.2,     // Opacidad del relleno
-                radius: 100000        // Radio en metros (100 km)
+                color: 'blue',
+                fillColor: 'red',
+                fillOpacity: 0.2,
+                radius: 100000
             }).addTo(map);
 
-            // Llamar al backend para obtener los embalses cercanos
-            fetch(`http://localhost:3000/embalses-cercanos?lat=${lat}&lon=${lon}`)
-                .then(response => response.json())
-                .then(data => {
-                    data.forEach(embalse => {
-                        // Marcar cada embalse en el mapa
-                        var embalseMarker = L.marker([embalse.LATITUD, embalse.LONGITUD]).addTo(map)
-                            .bindPopup(`<b>${embalse.NOMBRE}</b><br>A ${embalse.DISTANCE.toFixed(2)} km.`);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error al obtener los embalses:', error);
-                });
+            // Aquí puedes añadir la funcionalidad para obtener embalses cercanos
         }
 
         function showError(error) {
@@ -266,6 +324,9 @@
                     break;
             }
         }
+
+        // Cargamos los datos cuando la página se cargue
+        window.onload = cargarDatos;
     </script>
 </body>
 </html>

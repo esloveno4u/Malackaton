@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>En busca de tu embalse</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        /* Estilos generales */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Cabecero superior */
+        header {
+            background: linear-gradient(90deg, #007BFF, #28a745); /* Azul a verde */
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        /* Buscador debajo del título */
+        .search-container {
+            text-align: center;
+            margin: 20px;
+        }
+
+        .search-container input[type="text"] {
+            padding: 10px;
+            font-size: 1.2em;
+            width: 50%;
+            margin-right: 10px;
+        }
+
+        .search-container button {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Estilos del mapa */
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+
+        /* Estilos del pie de página */
+        footer {
+            background: linear-gradient(90deg, #007BFF, #28a745); /* Azul a verde */
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        /* Barra lateral de accesibilidad */
+        .sidebar {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #111;
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+            color: white;
+        }
+
+        .sidebar a {
+            padding: 10px 15px;
+            text-decoration: none;
+            font-size: 1.2em;
+            color: #818181;
+            display: block;
+            transition: 0.3s;
+        }
+
+        .sidebar a:hover {
+            color: #f1f1f1;
+        }
+
+        .sidebar .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 2em;
+        }
+
+        .hamburger {
+            font-size: 2em;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        /* Botón de inicio de sesión */
+        .login-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        /* Modo alto contraste */
+        body.high-contrast header,
+        body.high-contrast footer {
+            background: #000;
+            color: #ffeb3b;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Cabecera superior -->
+    <header>
+        EN BUSCA DE TU EMBALSE
+    </header>
+
+    <!-- Buscador debajo del título -->
+    <div class="search-container">
+        <input type="text" placeholder="Buscar embalse...">
+        <button>Buscar</button>
+    </div>
+
+    <!-- Botón de menú de accesibilidad -->
+    <div class="hamburger" onclick="openNav()">&#9776;</div>
+
+    <!-- Barra lateral de accesibilidad -->
+    <div id="mySidenav" class="sidebar">
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+        <a href="#" onclick="toggleHighContrast()">Alto Contraste</a>
+        <a href="#" onclick="toggleLargeText()">Texto Grande</a>
+        <a href="#" onclick="readContent()">Narrar Texto</a>
+    </div>
+
+    <!-- Botón de inicio de sesión / registro -->
+    <button class="login-button" onclick="login()">Iniciar sesión / Registrarse</button>
+
+    <!-- Mapa -->
+    <div id="map"></div>
+
+    <!-- Pie de página -->
+    <footer>
+        Equipo Avanza Pirulo-Malackaton'24
+    </footer>
+
+    <!-- Scripts para Leaflet y la geolocalización -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Muestra u oculta el menú de accesibilidad
+        function openNav() {
+            document.getElementById("mySidenav").style.width = "250px";
+        }
+
+        function closeNav() {
+            document.getElementById("mySidenav").style.width = "0";
+        }
+
+        // Alternar el modo de alto contraste
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+        }
+
+        // Alternar el texto grande
+        function toggleLargeText() {
+            document.body.classList.toggle('large-text');
+        }
+
+        // Leer el contenido de la página (narrador de texto)
+        function readContent() {
+            const content = document.querySelector('header').innerText + " " + 
+                            document.querySelector('footer').innerText;
+            const utterance = new SpeechSynthesisUtterance(content);
+            speechSynthesis.speak(utterance);
+        }
+
+        // Función para el botón de inicio de sesión / registro
+        function login() {
+            alert("Iniciar sesión o registrarse");
+            // Aquí puedes redirigir al usuario a una página de login/registro
+        }
+
+        // Limitar el mapa a la región de España
+        var southWest = L.latLng(35.896, -10.154); // Punto más suroeste
+        var northEast = L.latLng(43.792, 4.762);  // Punto más noreste
+        var bounds = L.latLngBounds(southWest, northEast);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showMap, showError);
+        } else {
+            alert('La geolocalización no es soportada por este navegador.');
+        }
+
+        function showMap(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+
+            // Crear el mapa centrado en la ubicación del usuario
+            var map = L.map('map', {
+                maxBounds: bounds, // Limitar el mapa a España
+                maxZoom: 12,
+                minZoom: 5
+            }).setView([lat, lon], 8);
+
+            // Añadir una capa de OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Marcar la ubicación del usuario
+            var userMarker = L.marker([lat, lon]).addTo(map)
+                .bindPopup('<b>Estás aquí</b>').openPopup();
+
+            // Dibujar un círculo azul con interior rojo y un radio de 100 km (100000 metros)
+            var circle = L.circle([lat, lon], {
+                color: 'blue',        // Color del borde del círculo
+                fillColor: 'red',     // Color del relleno
+                fillOpacity: 0.2,     // Opacidad del relleno
+                radius: 100000        // Radio en metros (100 km)
+            }).addTo(map);
+
+            // Llamar al backend para obtener los embalses cercanos
+            fetch(`http://localhost:3000/embalses-cercanos?lat=${lat}&lon=${lon}`)
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(embalse => {
+                        // Marcar cada embalse en el mapa
+                        var embalseMarker = L.marker([embalse.LATITUD, embalse.LONGITUD]).addTo(map)
+                            .bindPopup(`<b>${embalse.NOMBRE}</b><br>A ${embalse.DISTANCE.toFixed(2)} km.`);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error al obtener los embalses:', error);
+                });
+        }
+
+        function showError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("El usuario negó el acceso a la geolocalización.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("La ubicación no está disponible.");
+                    break;
+                case error.TIMEOUT:
+                    alert("La solicitud de geolocalización ha caducado.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Ha ocurrido un error desconocido.");
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>

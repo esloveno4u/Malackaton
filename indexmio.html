@@ -6,6 +6,7 @@
     <title>En busca de tu embalse</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
     <link rel="stylesheet" href="general.css">
+    <link rel="icon" type="image/x-icon" href="/imagenes/favicon.png">
     <style>
         /* Estilos generales */
         body, html {
@@ -77,6 +78,24 @@
             width: 100%;
             z-index: 2;
             padding-bottom: 20px; /* Espacio inferior */
+        }
+
+        /* Tabla */
+        table {
+            width: 90%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
         }
 
         /* Barra lateral de accesibilidad */
@@ -167,7 +186,7 @@
     <!-- Mapa -->
     <div id="map"></div>
 
-    <!-- Buscador y filtro debajo del mapa -->
+    <!-- Buscador y filtro para embalses -->
     <div class="search-container">
         <input type="text" id="buscarEmbalse" placeholder="Buscar embalse...">
         <select id="filtroEmbalse">
@@ -177,6 +196,7 @@
         </select>
         <button onclick="filtrarEmbalses()">Buscar</button>
     </div>
+
 
     <!-- Botón de menú de accesibilidad -->
     <div class="hamburger" onclick="openNav()">&#9776;</div>
@@ -190,7 +210,7 @@
                 <li><a href="#" onclick="toggleHighContrast()">Alto Contraste</a></li>
                 <li><a href="#" onclick="toggleLargeText()">Texto Grande</a></li>
                 <li><a href="#" onclick="readContent()">Narrar Texto</a></li>
-                <li><a href="#" onclick="toggleHelpText()">Texto de Ayuda</a></li> <!-- Nueva opción -->
+                <li><a href="#" onclick="toggleHelpText()">Texto de Ayuda</a></li>
             </ul>
         </div>
     </div>
@@ -213,7 +233,38 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Aquí se insertarán los datos del JSON -->
+            <!-- Aquí se insertarán los datos del JSON de embalsesutf8 -->
+        </tbody>
+    </table>
+        <!-- Buscador y filtro para GCC -->
+        <div class="search-container">
+            <input type="text" id="buscarProvincia" placeholder="Buscar por provincia...">
+            <button onclick="filtrarGCC()">Buscar</button>
+        </div>
+    <!-- Nueva tabla de GCC -->
+    <table id="gccTable">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Embalse</th>
+                <th>X</th>
+                <th>Y</th>
+                <th>Demarcación</th>
+                <th>Cauce</th>
+                <th>Google</th>
+                <th>OpenStreetMap</th>
+                <th>Wikidata</th>
+                <th>Provincia</th>
+                <th>CCAA</th>
+                <th>Tipo</th>
+                <th>Cota Coronación</th>
+                <th>Altitud Cimien</th>
+                <th>Informe</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Aquí se insertarán los datos del JSON de gcc.json -->
         </tbody>
     </table>
 
@@ -221,25 +272,41 @@
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
         let embalses = [];
+        let gccData = []; // Almacenará los datos de gcc.json
         let helpTextEnabled = false; // Variable para controlar el texto de ayuda
 
         // Cargar datos de embalses
-        async function cargarDatos() {
+        async function cargarDatosembalse() {
             try {
                 const response = await fetch('embalsesutf8.json');
                 if (!response.ok) {
-                    throw new Error('No se pudo cargar el archivo JSON');
+                    throw new Error('No se pudo cargar el archivo JSON de embalses');
                 }
                 const datos = await response.json();
                 embalses = datos.items;
-                mostrarDatos(embalses);
+                mostrarDatosembalse(embalses);
             } catch (error) {
-                console.error('Error al cargar los datos:', error);
+                console.error('Error al cargar los datos de embalses:', error);
             }
         }
 
-        // Mostrar datos en la tabla
-        function mostrarDatos(datos) {
+        // Cargar datos de GCC
+        async function cargarDatosGCC() {
+            try {
+                const response = await fetch('gcc.json');
+                if (!response.ok) {
+                    throw new Error('No se pudo cargar el archivo JSON de gcc');
+                }
+                const datos = await response.json();
+                gccData = datos.items;
+                mostrarDatosGCC(gccData);
+            } catch (error) {
+                console.error('Error al cargar los datos de GCC:', error);
+            }
+        }
+
+        // Mostrar datos en la tabla de embalses
+        function mostrarDatosembalse(datos) {
             const tbody = document.querySelector('#embalsesTable tbody');
             tbody.innerHTML = '';
 
@@ -252,6 +319,35 @@
                     <td>${embalse.agua_total}</td>
                     <td>${embalse.electrico_flag ? 'Sí' : 'No'}</td>
                     <td><a href="${embalse.links[0].href}" target="_blank">Ver más</a></td>
+                `;
+                tbody.appendChild(fila);
+            });
+        }
+
+        // Mostrar datos en la tabla de GCC
+        function mostrarDatosGCC(datos) {
+            const tbody = document.querySelector('#gccTable tbody');
+            tbody.innerHTML = '';
+
+            datos.forEach(embalse => {
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td>${embalse.codigo}</td>
+                    <td>${embalse.nombre}</td>
+                    <td>${embalse.embalse}</td>
+                    <td>${embalse.x}</td>
+                    <td>${embalse.y}</td>
+                    <td>${embalse.demarc}</td>
+                    <td>${embalse.cauce}</td>
+                    <td><a href="${embalse.google || '#'}">${embalse.google ? 'Link' : 'N/A'}</a></td>
+                    <td><a href="${embalse.openstreetmap || '#'}">${embalse.openstreetmap ? 'Link' : 'N/A'}</a></td>
+                    <td><a href="${embalse.wikidata || '#'}">${embalse.wikidata ? 'Link' : 'N/A'}</a></td>
+                    <td>${embalse.provincia}</td>
+                    <td>${embalse.ccaa}</td>
+                    <td>${embalse.tipo}</td>
+                    <td>${embalse.cota_coron || 'N/A'}</td>
+                    <td>${embalse.alt_cimien || 'N/A'}</td>
+                    <td><a href="${embalse.informe}">Informe</a></td>
                 `;
                 tbody.appendChild(fila);
             });
@@ -275,7 +371,18 @@
                 }
             });
 
-            mostrarDatos(embalsesFiltrados);
+            mostrarDatosembalse(embalsesFiltrados);
+        }
+
+        // Filtrar GCC según valor del campo de búsqueda por provincia
+        function filtrarGCC() {
+            const filtro = document.querySelector('#buscarProvincia').value.toLowerCase();
+
+            const gccFiltrados = gccData.filter(embalse => {
+                return embalse.provincia.toLowerCase().includes(filtro);
+            });
+
+            mostrarDatosGCC(gccFiltrados);
         }
 
         // Muestra u oculta el menú de accesibilidad
@@ -337,10 +444,25 @@
                 minZoom: 5
             }).setView([lat, lon], 8);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
+    // Añadir el mapa base (OpenStreetMap en este caso).
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+    }).addTo(map);
 
+            fetch('gcc.json')
+      .then(response => response.json())
+      .then(data => {
+        data.items.forEach(item => {
+          // Comprobar si existen coordenadas válidas antes de agregar el marcador
+          if (item.x && item.y) {
+            // Añadir un marcador en las coordenadas x (latitud) e y (longitud)
+            L.marker([item.x, item.y])
+              .addTo(map)
+              .bindPopup(`<b>${item.nombre}</b><br>${item.embalse}<br>${item.provincia}, ${item.ccaa}`);
+          }
+        });
+      })
+      .catch(error => console.error('Error cargando el archivo JSON:', error));
             var userMarker = L.marker([lat, lon]).addTo(map)
                 .bindPopup('<b>Estás aquí</b>').openPopup();
 
@@ -370,7 +492,10 @@
         }
 
         // Cargamos los datos cuando la página se cargue
-        window.onload = cargarDatos;
+        window.onload = function() {
+            cargarDatosembalse();
+            cargarDatosGCC(); // Cargar datos de gcc al iniciar
+        };
     </script>
 </body>
 </html>
